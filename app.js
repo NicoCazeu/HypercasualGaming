@@ -134,7 +134,7 @@ app.post("/upload", multer.single("file"), (req, res) => {
   blobStream.end(req.file.buffer);
 });
 
-app.post("/upload", (req, res) => {
+/*app.post("/upload", (req, res) => {
   upload(req, res, function (err) {
     if (err) {
       console.log(err);
@@ -181,7 +181,7 @@ app.post("/upload", (req, res) => {
       );
     }
   });
-});
+});*/
 
 app.get("/logout", (req, res) => {
   authed = false;
