@@ -1,15 +1,23 @@
 const fs = require("fs");
 const express = require("express");
-const multer = require("multer");
+const Multer = require("multer");
+const { Storage } = require("@google-cloud/storage");
 const OAuth2Data = require("./credentials.json");
 var title, description;
 var tags = [];
 
 const { google } = require("googleapis");
-const { Storage } = require('@google-cloud/storage');
+const storage = new Storage({projectId: "hypercasual-gaming-youtube", credentials: {client_email: "hypercasual-gaming-youtube@appspot.gserviceaccount.com", private_key: "-----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQCei93oCWxzBXhi\nPE8JqSYUvGvNumHHM1BEIRZHZUHRTJFYcmFy+N0fI1eJmjlqxD7qWS5O+wJ7I/i2\nAOhud9q01JmmpwrQfqTxvZ2/6vTZhW0nR7XhgA7caIv9IyqU/qsSbySoRxwAsSqy\nUkjKhVbCCfOQzkaUCHbrzDShkxtR5Lvuz3J7OEKCTdA4afBiA2OtH5vSPjWhpAzu\nMB1P4EKZ4MeVCMH19mH8rO8lzlLAfIeW9/QfFMTnT7wdeGBZ9HPahCStxcK2sYN3\nUTLzYWZDpbc2ZSfVRVGNKKHTyWB4zgj3V1uDl1AB5qMYNZDhuB9WmhuPPB03WW//\nRjo51uD1AgMBAAECggEABphzncsukMZh0KxeRAeeXER5CPDqT7rJvwZ6rR5Vk5sS\nJ3zH+FwepBn4nUfQ1akzo39xlrrdyo5KMsAXlejfLKCfgmL2kd/YMBpJmAnyhPiw\n/BkBRE/rI64nDLEhfLCaIJqGYDMSbiZF9sRyNMKWmQcy87YxEh1xXQknXgVcS0Fz\nlM2WNOHgZs6tmgR/+L/vwCl7dh3ZW9iTxuhuRM1FYCeoxK5VelXrWRoLUqKPnqZy\nccwFWG82ohjCSZRFPPO0DFxAmYbpVTdL453Iq2Lm3/w21prx7jJtxtD1qm6yhoce\nh8jSu/roSOdHwJLd4N2ABzshdVRmaaXC/VeBlLenoQKBgQDVGPK89UO67rJp6zaf\nqK4jW5sydF2ncEgx4ewpefs49TD/zw51w+7DnVj++Y2ZnywmTZNVwEoqzB4rB/R7\nFAsy0OnfdA/03oOWoDyRaXyVfY2QEfUFZwdU/fkgmscYr+OXoPALMni3yu6A+fUq\nNqrHRSJhz/m7xtE1fKiadKT9PQKBgQC+d1pITlPvhWu5HiXDefW1fsEzGXVPNxe4\nao1FYXDGJwvnCoOwMpZP7vTfXR9ddwGXAVwvhtV05KH9iXWb2r8f6p5345aMgpQL\nzcCwk+stFk6Zfzo3q3Y8CxgsLQy1B+SNjCysCxrAS8sIDytrS11jJGucSD1tnFXW\nv5qAWxEeGQKBgQCl3K9CyBwZqaSQsJVpm98+ghTAJramlsx6lwA8IEebw6yJz13P\n59s1woj8nLzML4orngHpoquXuBxbHev6yFUXDmialjm9PFxrpvi9rb9ck8bVtkRi\nGhko3C1GZXJGEtEwugFclcJEO9174hIi8z3lsDfcrgYRU+SOnyKUZenteQKBgQCl\ngedVD6OGbqT2Hsln/LHT/gp6kfPLWy9klEqgcJTjy4hfQ1a9pKfTW+0zr6MSv9gE\n1Sy7K+qPAiH1xB4LyeDtJh6ARadMACgPvcJkbpUc/9ZbMiBvwbIjaOyfbqItKWek\nzJsBAUFEulf6b9wmBz5maX6NNoUSm5hH3QWv5fKQ+QKBgQDEYJ6LsPkLLLIhZL0a\nV6cXOxnePfAiGcbTahwfqaYZ71z5AwFTtJLsTtKZFB4zzmQDFX+JisX1QNF69qf/\nc26l2opSgOqtIv1bHmR2UaB5lu1Wyn3OWoVe3vZayq89leU0WytjGfGosAbioX6L\nhqTe1Zq0WUeS6AmaodfVGY9cpw==\n-----END PRIVATE KEY-----\n"}});
+//const storage = new Storage({projectId: process.env.GCLOUD_PROJECT, credentials: {client_email: process.env.GCLOUD_CLIENT_EMAIL, private_key: process.env.GCLOUD_PRIVATE_KEY}});
+const multer = Multer({
+  storage: Multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024
+  }
+});
 
-// Instantiate a storage client
-const storage = new Storage();
+//const bucket = storage.bucket(process.env.GCS_BUCKET);
+const bucket = storage.bucket("youtube-uploader-bucket");
 
 const app = express();
 
@@ -41,19 +49,7 @@ app.set("view engine", "ejs");
 
 /*var upload = multer({
   storage: Storage,
-}).single("file");*/
-
-// Multer is required to process file uploads and make them available via
-// req.files.
-const uploadMulter = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 5 * 1024 * 1024, // no larger than 5mb, you can change as needed.
-  },
-});
-
-// A bucket is a container for objects (files).
-const bucket = storage.bucket(process.env.GCLOUD_STORAGE_BUCKET);
+}).single("file"); //Field name and max count*/
 
 app.get("/", (req, res) => {
   if (!authed) {
@@ -86,72 +82,59 @@ app.get("/", (req, res) => {
   }
 });
 
-app.post('/upload', uploadMulter.single('file'), (req, res, next) => {
-  if (!req.file) {
-    res.status(400).send('No file uploaded.');
-    return;
-  }
-  // Create a new blob in the bucket and upload the file data.
+app.post("/upload", multer.single("file"), (req, res) => {
   const blob = bucket.file(req.file.originalname);
   const blobStream = blob.createWriteStream();
-
-  blobStream.on('error', err => {
-    next(err);
-  });
 
   title = req.body.title;
   description = req.body.description;
   tags = req.body.tags;
 
-  const youtube = google.youtube({ version: "v3", auth: oAuth2Client });
+  blobStream.on("error", err => console.log(err));
 
-  youtube.videos.insert(
-    {
-      resource: {
-        // Video title and description
-        snippet: {
-            title:title,
-            description:description,
-            tags:tags
+  blobStream.on("finish", () => {
+    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
+
+    const youtube = google.youtube({ version: "v3", auth: oAuth2Client });
+
+    youtube.videos.insert(
+      {
+        resource: {
+          // Video title and description
+          snippet: {
+              title:title,
+              description:description,
+              tags:tags
+          },
+          // I don't want to spam my subscribers
+          status: {
+            privacyStatus: "private",
+          },
         },
-        // I don't want to spam my subscribers
-        status: {
-          privacyStatus: "private",
+        // This is for the callback function
+        part: "snippet,status",
+
+        // Create the readable stream to upload the video
+        media: {
+          body: blob.createReadStream()
         },
       },
-      // This is for the callback function
-      part: "snippet,status",
-
-      // Create the readable stream to upload the video
-      media: {
-        body: fs.createReadStream(req.file.path)
-      },
-    },
-    (err, data) => {
-      if(err) throw err
-      console.log(data)
-      console.log("Done.");
-      fs.unlinkSync(req.file.path);
-      res.render("success", { name: name, pic: pic, success: true });
-    }
-  );
-
-  blobStream.on('finish', () => {
-    // The public URL can be used to directly access the file via HTTP.
-    const publicUrl = format(
-      `https://storage.googleapis.com/${bucket.name}/${blob.name}`
+      (err, data) => {
+        if(err) throw err
+        console.log(data)
+        console.log("Done.");
+        fs.unlinkSync(req.file.path);
+        res.render("success", { name: name, pic: pic, success: true });
+      }
     );
-    res.status(200).send(publicUrl);
-  });
+
+    //res.status(200).send(publicUrl);
+  })
 
   blobStream.end(req.file.buffer);
 });
 
-/*app.post("/upload", upload.single('file'), function(req, res) {
-
-});*/
-
-/*app.post("/upload", (req, res) => {
+app.post("/upload", (req, res) => {
   upload(req, res, function (err) {
     if (err) {
       console.log(err);
@@ -198,7 +181,7 @@ app.post('/upload', uploadMulter.single('file'), (req, res, next) => {
       );
     }
   });
-});*/
+});
 
 app.get("/logout", (req, res) => {
   authed = false;
