@@ -6,7 +6,7 @@ var title, description;
 var tags = [];
 
 const { google } = require("googleapis");
-const { storage } = require('@google-cloud/storage');
+const { Storage } = require('@google-cloud/storage');
 
 // Instantiate a storage client
 const storage = new Storage();
