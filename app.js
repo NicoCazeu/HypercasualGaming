@@ -6,6 +6,10 @@ var title, description;
 var tags = [];
 
 const { google } = require("googleapis");
+const { storage } = require('@google-cloud/storage');
+
+// Instantiate a storage client
+const storage = new Storage();
 
 const app = express();
 
@@ -26,18 +30,30 @@ const SCOPES =
 
 app.set("view engine", "ejs");
 
-var Storage = multer.diskStorage({
+/*var Storage = multer.diskStorage({
   destination: function (req, file, callback) {
     callback(null, "./videos");
   },
   filename: function (req, file, callback) {
     callback(null, file.fieldname + "_" + Date.now() + "_" + file.originalname);
   },
+});*/
+
+/*var upload = multer({
+  storage: Storage,
+}).single("file");*/
+
+// Multer is required to process file uploads and make them available via
+// req.files.
+const uploadMulter = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // no larger than 5mb, you can change as needed.
+  },
 });
 
-var upload = multer({
-  storage: Storage,
-}).single("file"); //Field name and max count
+// A bucket is a container for objects (files).
+const bucket = storage.bucket(process.env.GCLOUD_STORAGE_BUCKET);
 
 app.get("/", (req, res) => {
   if (!authed) {
@@ -70,7 +86,72 @@ app.get("/", (req, res) => {
   }
 });
 
-app.post("/upload", (req, res) => {
+app.post('/upload', uploadMulter.single('file'), (req, res, next) => {
+  if (!req.file) {
+    res.status(400).send('No file uploaded.');
+    return;
+  }
+  // Create a new blob in the bucket and upload the file data.
+  const blob = bucket.file(req.file.originalname);
+  const blobStream = blob.createWriteStream();
+
+  blobStream.on('error', err => {
+    next(err);
+  });
+
+  title = req.body.title;
+  description = req.body.description;
+  tags = req.body.tags;
+
+  const youtube = google.youtube({ version: "v3", auth: oAuth2Client });
+
+  youtube.videos.insert(
+    {
+      resource: {
+        // Video title and description
+        snippet: {
+            title:title,
+            description:description,
+            tags:tags
+        },
+        // I don't want to spam my subscribers
+        status: {
+          privacyStatus: "private",
+        },
+      },
+      // This is for the callback function
+      part: "snippet,status",
+
+      // Create the readable stream to upload the video
+      media: {
+        body: fs.createReadStream(req.file.path)
+      },
+    },
+    (err, data) => {
+      if(err) throw err
+      console.log(data)
+      console.log("Done.");
+      fs.unlinkSync(req.file.path);
+      res.render("success", { name: name, pic: pic, success: true });
+    }
+  );
+
+  blobStream.on('finish', () => {
+    // The public URL can be used to directly access the file via HTTP.
+    const publicUrl = format(
+      `https://storage.googleapis.com/${bucket.name}/${blob.name}`
+    );
+    res.status(200).send(publicUrl);
+  });
+
+  blobStream.end(req.file.buffer);
+});
+
+/*app.post("/upload", upload.single('file'), function(req, res) {
+
+});*/
+
+/*app.post("/upload", (req, res) => {
   upload(req, res, function (err) {
     if (err) {
       console.log(err);
@@ -117,7 +198,7 @@ app.post("/upload", (req, res) => {
       );
     }
   });
-});
+});*/
 
 app.get("/logout", (req, res) => {
   authed = false;
@@ -144,6 +225,6 @@ app.get("/google/callback", function (req, res) {
   }
 });
 
-app.listen(5000, () => {
-  console.log("App is listening on Port 5000");
+app.listen(8080, () => {
+  console.log("App is listening on Port 8080");
 });
