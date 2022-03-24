@@ -1,4 +1,4 @@
-runtime: nodejs
+runtime: nodejs12
 
 env_variables:
   GCLOUD_STORAGE_BUCKET: hypercasual-gaming-bucket
